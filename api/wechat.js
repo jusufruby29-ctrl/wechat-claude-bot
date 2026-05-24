@@ -1,5 +1,4 @@
 const crypto = require("crypto");
-
 const WECHAT_TOKEN = process.env.WECHAT_TOKEN;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
@@ -32,20 +31,33 @@ async function askClaude(userText) {
 
 module.exports = async (req, res) => {
   const query = Object.fromEntries(new URL(req.url, "http://localhost").searchParams);
- if (!verifySignature(query)) { res.writeHead(403); res.end("invalid signature"); return; }
-  if (req.method === "GET") { res.send(query.echostr || ""); return; }
+  if (!verifySignature(query)) {
+    res.writeHead(403, { "content-type": "text/plain" });
+    res.end("invalid signature");
+    return;
+  }
+  if (req.method === "GET") {
+    res.writeHead(200, { "content-type": "text/plain" });
+    res.end(query.echostr || "");
+    return;
+  }
   let body = "";
   for await (const chunk of req) body += chunk;
   const toUser = getXmlValue(body, "ToUserName");
   const fromUser = getXmlValue(body, "FromUserName");
   const msgType = getXmlValue(body, "MsgType");
   const content = getXmlValue(body, "Content");
-  if (msgType !== "text" || !content) { res.send(textReply({ toUser: fromUser, fromUser: toUser, content: "我只支持文字消息。" })); return; }
+  if (msgType !== "text" || !content) {
+    res.writeHead(200, { "content-type": "application/xml; charset=utf-8" });
+    res.end(textReply({ toUser: fromUser, fromUser: toUser, content: "我只支持文字消息。" }));
+    return;
+  }
   try {
     const answer = await askClaude(content);
-    res.setHeader("content-type", "application/xml");
-    res.send(textReply({ toUser: fromUser, fromUser: toUser, content: answer }));
+    res.writeHead(200, { "content-type": "application/xml; charset=utf-8" });
+    res.end(textReply({ toUser: fromUser, fromUser: toUser, content: answer }));
   } catch (e) {
-    res.send(textReply({ toUser: fromUser, fromUser: toUser, content: "Claude 暂时没有成功回复，请稍后再试。" }));
+    res.writeHead(200, { "content-type": "application/xml; charset=utf-8" });
+    res.end(textReply({ toUser: fromUser, fromUser: toUser, content: "Claude 暂时没有成功回复，请稍后再试。" }));
   }
 };
