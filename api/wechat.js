@@ -32,7 +32,7 @@ async function askClaude(userText) {
 
 module.exports = async (req, res) => {
   const query = Object.fromEntries(new URL(req.url, "http://localhost").searchParams);
-  if (!verifySignature(query)) { res.status(403).send("invalid signature"); return; }
+ if (!verifySignature(query)) { res.writeHead(403); res.end("invalid signature"); return; }
   if (req.method === "GET") { res.send(query.echostr || ""); return; }
   let body = "";
   for await (const chunk of req) body += chunk;
